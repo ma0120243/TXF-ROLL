@@ -1,0 +1,1831 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TXFM Roll">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>TXFM ROLL - 期貨滾倉策略</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif;
+    background: #0a0e1a;
+    color: #e2e8f0;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  
+  /* ===== 頂部導航 ===== */
+  .navbar {
+    background: linear-gradient(180deg, #0f1729 0%, #0a0e1a 100%);
+    border-bottom: 1px solid #1e293b;
+    padding: 12px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: #60a5fa;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .brand-arrows { color: #475569; }
+  
+  .tabs {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab:hover { color: #cbd5e1; background: #1e293b; }
+  .tab.active {
+    background: #1e293b;
+    color: #60a5fa;
+    border-color: #334155;
+  }
+  
+  .strategy-select {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #cbd5e1;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  /* ===== 主容器 ===== */
+  .main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .view { display: none; }
+  .view.active { display: block; }
+  
+  /* ===== 三欄區 ===== */
+  .three-cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 900px) {
+    .three-cols { grid-template-columns: 1fr; }
+  }
+  
+  .card {
+    background: #0f1729;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .card-title {
+    font-size: 13px;
+    color: #fbbf24;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+  
+  /* ===== 表單欄位 ===== */
+  .form-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+  .form-row:last-child { margin-bottom: 0; }
+  .form-label {
+    font-size: 13px;
+    color: #94a3b8;
+    flex-shrink: 0;
+  }
+  .input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .form-input {
+    width: 110px;
+    padding: 8px 10px;
+    background: #0a0e1a;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    color: #fbbf24;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: monospace;
+    text-align: right;
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
+  .form-input.editable { 
+    color: #93c5fd;
+  }
+  .form-unit {
+    font-size: 12px;
+    color: #64748b;
+    width: 30px;
+  }
+  
+  /* ===== 風險指標說明區 ===== */
+  .ri-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .ri-legend-item {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid;
+    text-align: left;
+  }
+  .ri-legend-item .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .ri-legend-title { font-size: 12px; font-weight: 600; }
+  .ri-legend-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  
+  .legend-add { background: #064e3b22; border-color: #10b98144; }
+  .legend-add .dot, .legend-add .ri-legend-title { color: #10b981; }
+  .legend-target { background: #1e3a8a22; border-color: #3b82f644; }
+  .legend-target .dot, .legend-target .ri-legend-title { color: #3b82f6; }
+  .legend-reduce { background: #78350f22; border-color: #f59e0b44; }
+  .legend-reduce .dot, .legend-reduce .ri-legend-title { color: #f59e0b; }
+  .legend-cut { background: #7f1d1d22; border-color: #ef444444; }
+  .legend-cut .dot, .legend-cut .ri-legend-title { color: #ef4444; }
+  
+  .formula-note {
+    margin-top: 12px;
+    padding: 10px;
+    background: #0a0e1a;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .formula-note code {
+    color: #fbbf24;
+    font-family: monospace;
+  }
+
+  /* ===== RI 進度條 ===== */
+  .ri-progress-card {
+    background: #0f1729;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .ri-progress-title {
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 16px;
+  }
+  .ri-progress-value {
+    text-align: center;
+    font-size: 36px;
+    font-weight: 700;
+    color: #60a5fa;
+    font-family: monospace;
+    margin-bottom: 16px;
+  }
+  .ri-progress-track {
+    height: 8px;
+    background: #1e293b;
+    border-radius: 4px;
+    position: relative;
+    overflow: visible;
+  }
+  .ri-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #ef4444 0%, #f59e0b 25%, #3b82f6 50%, #10b981 75%);
+    width: 60%;
+    transition: width 0.3s;
+  }
+  .ri-progress-marker {
+    position: absolute;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #60a5fa;
+    border: 2px solid #0a0e1a;
+    transform: translateX(-50%);
+    transition: left 0.3s;
+  }
+  .ri-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    font-size: 11px;
+    color: #64748b;
+    position: relative;
+  }
+  
+  /* ===== 動作按鈕 ===== */
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: #2563eb; color: white; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-success { background: #047857; color: white; }
+  .btn-success:hover { background: #065f46; }
+  .btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+  .btn-secondary:hover { background: #334155; }
+  .btn-danger { background: #7f1d1d; color: white; }
+  .btn-danger:hover { background: #991b1b; }
+  
+  /* ===== 摘要 ===== */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .summary-item {
+    background: #0f1729;
+    border: 1px solid #1e293b;
+    border-left: 3px solid #60a5fa;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .summary-label {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+  }
+  .summary-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fbbf24;
+    font-family: monospace;
+  }
+  .summary-item.danger { border-left-color: #ef4444; }
+  .summary-item.danger .summary-value { color: #ef4444; }
+  .summary-item.success { border-left-color: #10b981; }
+  .summary-item.success .summary-value { color: #10b981; }
+  .summary-item.warning { border-left-color: #f59e0b; }
+  .summary-item.warning .summary-value { color: #f59e0b; }
+  
+  /* ===== 商品選擇器(緊湊版) ===== */
+  .product-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .product-pill {
+    padding: 6px 12px;
+    background: #0f1729;
+    border: 1px solid #1e293b;
+    border-radius: 16px;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .product-pill:hover { border-color: #60a5fa; }
+  .product-pill.active {
+    background: #1e40af;
+    color: white;
+    border-color: #3b82f6;
+  }
+  
+  /* ===== 表格 ===== */
+  .table-card {
+    background: #0f1729;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .table-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .table-header h3 {
+    font-size: 15px;
+    color: #fbbf24;
+  }
+  .table-header .table-desc {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 4px;
+  }
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    padding: 10px 8px;
+    text-align: right;
+    border-bottom: 1px solid #1e293b;
+    font-family: monospace;
+    white-space: nowrap;
+  }
+  th {
+    background: #0a0e1a;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 11px;
+    text-align: center;
+  }
+  td:first-child, th:first-child { text-align: center; font-weight: 700; }
+  tr.current { background: rgba(251, 191, 36, 0.15); }
+  tr.add-zone { background: rgba(16, 185, 129, 0.05); }
+  tr.reduce-zone { background: rgba(245, 158, 11, 0.05); }
+  tr.lock-zone { background: rgba(168, 85, 247, 0.08); }
+  tr.danger-zone td { color: #ef4444; }
+  
+  .action-add { color: #10b981; font-weight: 700; }
+  .action-reduce { color: #f59e0b; font-weight: 700; }
+  .action-cut { color: #ef4444; font-weight: 700; }
+  .action-lock { color: #a855f7; font-weight: 700; }
+  .action-inject { color: #06b6d4; font-weight: 700; }
+  
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+  }
+  
+  /* ===== 策略庫 ===== */
+  .strategy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .strategy-card {
+    background: #0f1729;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .strategy-card:hover { border-color: #60a5fa; }
+  .strategy-card.empty {
+    border-style: dashed;
+    border-color: #334155;
+    text-align: center;
+    color: #64748b;
+    cursor: pointer;
+    padding: 30px 14px;
+  }
+  .strategy-card.empty:hover {
+    border-color: #60a5fa;
+    color: #60a5fa;
+  }
+  .strategy-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fbbf24;
+    margin-bottom: 8px;
+  }
+  .strategy-meta {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .strategy-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .strategy-actions button {
+    flex: 1;
+    padding: 6px;
+    font-size: 11px;
+    border-radius: 4px;
+    border: 1px solid #334155;
+    background: #0a0e1a;
+    color: #cbd5e1;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .strategy-actions button:hover { background: #1e293b; }
+  .strategy-actions button.danger { color: #ef4444; }
+  
+  /* ===== 走勢圖 ===== */
+  .chart-container {
+    background: #0f1729;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .chart-svg-wrap {
+    position: relative;
+    width: 100%;
+    overflow-x: auto;
+  }
+  
+  /* ===== 對話框 ===== */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: #0f1729;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+  }
+  .modal h3 { color: #fbbf24; margin-bottom: 12px; }
+  .modal input {
+    width: 100%;
+    padding: 10px;
+    background: #0a0e1a;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #fbbf24;
+    font-family: inherit;
+    margin-bottom: 16px;
+  }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  
+  .save-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #064e3b;
+    color: #a7f3d0;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 150;
+  }
+  .save-toast.show { opacity: 1; }
+  
+  @media (max-width: 600px) {
+    .navbar { padding: 10px 12px; gap: 8px; }
+    .main { padding: 12px; }
+    .form-input { width: 90px; font-size: 14px; }
+    .ri-progress-value { font-size: 28px; }
+    .tab { padding: 6px 10px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 頂部導航 ===== -->
+<nav class="navbar">
+  <div class="brand">
+    <span class="brand-arrows">‹</span>
+    <span>TXFM ROLL</span>
+    <span class="brand-arrows">›</span>
+    <span style="font-size:11px;color:#10b981;background:#064e3b;padding:1px 6px;border-radius:4px;margin-left:4px;">v3.2</span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-view="params">⚙️ 參數</button>
+    <button class="tab" data-view="add">📈 加碼</button>
+    <button class="tab" data-view="reduce">📉 減碼</button>
+    <button class="tab" data-view="lock">🔒 鎖利</button>
+    <button class="tab" data-view="chart">📊 走勢</button>
+    <button class="tab" data-view="library">💼 策略庫</button>
+  </div>
+  <select class="strategy-select" id="strategySelect" onchange="loadFromSelect(this.value)">
+    <option value="">— 選擇策略 —</option>
+  </select>
+</nav>
+
+<div class="main">
+
+  <!-- ============================================== -->
+  <!-- ===== 視圖 1:參數設定 ===== -->
+  <!-- ============================================== -->
+  <div class="view active" id="view-params">
+    
+    <!-- 商品快選 -->
+    <div class="product-bar" id="productBar"></div>
+    
+    <!-- 三欄並列 -->
+    <div class="three-cols">
+      
+      <!-- 左:部位設定 -->
+      <div class="card">
+        <div class="card-title">📍 部位設定</div>
+        <div class="form-row">
+          <span class="form-label">初始口數</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="initLots" value="12">
+            <span class="form-unit">口</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">初始均價</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="avgPrice" value="38599">
+            <span class="form-unit">點</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">每口保證金</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input editable" id="initMargin" value="26300">
+            <span class="form-unit">NT$</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">維持保證金</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input editable" id="maintMargin" value="20150">
+            <span class="form-unit">NT$</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">帳戶權益</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="capital" value="378720" step="1000">
+            <span class="form-unit">NT$</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">每點價值</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input editable" id="pointValue" value="10">
+            <span class="form-unit">NT$</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 中:風險指標設定 -->
+      <div class="card">
+        <div class="card-title">⚡ 風險指標設定</div>
+        <div class="form-row">
+          <span class="form-label">目標風險指標</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="targetRI" value="120">
+            <span class="form-unit">%</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">加碼觸發(上限)</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="addTrigger" value="130">
+            <span class="form-unit">%</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">減碼觸發(下限)</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="reduceTrigger" value="110">
+            <span class="form-unit">%</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">鎖利觸發(每N次加碼)</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="lockEveryN" value="10">
+            <span class="form-unit">次</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">鎖利比例</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="lockPct" value="25">
+            <span class="form-unit">%</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">計算至指數上限</span>
+          <div class="input-with-unit">
+            <input type="number" class="form-input" id="maxPrice" value="60000">
+            <span class="form-unit">點</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 右:風險指標說明 -->
+      <div class="card">
+        <div class="card-title">📊 風險指標說明</div>
+        <div class="ri-legend">
+          <div class="ri-legend-item legend-add">
+            <span class="dot" style="background:#10b981;"></span>
+            <span class="ri-legend-title">指標 > 上限</span>
+            <div class="ri-legend-desc">可加碼</div>
+          </div>
+          <div class="ri-legend-item legend-target">
+            <span class="dot" style="background:#3b82f6;"></span>
+            <span class="ri-legend-title">指標 = 目標</span>
+            <div class="ri-legend-desc">正常持有</div>
+          </div>
+          <div class="ri-legend-item legend-reduce">
+            <span class="dot" style="background:#f59e0b;"></span>
+            <span class="ri-legend-title">指標 < 下限</span>
+            <div class="ri-legend-desc">觸發減碼</div>
+          </div>
+          <div class="ri-legend-item legend-cut">
+            <span class="dot" style="background:#ef4444;"></span>
+            <span class="ri-legend-title">指標 < 100%</span>
+            <div class="ri-legend-desc">⚠️ 強平禁區</div>
+          </div>
+        </div>
+        <div class="formula-note">
+          公式:<code>風險指標 = 帳戶權益 ÷ 已用保證金 × 100%</code><br>
+          減碼後指標必定回升(保證金需求降低)<br>
+          永遠不會低於 100%
+        </div>
+      </div>
+      
+    </div>
+    
+    <!-- RI 進度條 -->
+    <div class="ri-progress-card">
+      <div class="ri-progress-title">目前風險指標</div>
+      <div class="ri-progress-value" id="currentRIDisplay">120.0%</div>
+      <div class="ri-progress-track">
+        <div class="ri-progress-fill" id="riProgressFill"></div>
+        <div class="ri-progress-marker" id="riProgressMarker"></div>
+      </div>
+      <div class="ri-progress-labels">
+        <span>0%</span>
+        <span style="color:#ef4444;">100%強平</span>
+        <span style="color:#f59e0b;">110%減碼</span>
+        <span style="color:#3b82f6;">120%目標</span>
+        <span style="color:#10b981;">130%加碼</span>
+        <span>200%+</span>
+      </div>
+    </div>
+    
+    <!-- 動作按鈕 -->
+    <div class="actions">
+      <button class="btn btn-primary" onclick="calculate(); switchView('add');">▶ 計算三表</button>
+      <button class="btn btn-success" onclick="openSaveModal()">💾 儲存策略</button>
+    </div>
+    
+    <!-- 摘要列 -->
+    <div class="summary" id="summaryBar"></div>
+    
+  </div>
+
+  <!-- ============================================== -->
+  <!-- ===== 視圖 2:加碼表 ===== -->
+  <!-- ============================================== -->
+  <div class="view" id="view-add">
+    <div class="table-card">
+      <div class="table-header">
+        <h3>📈 加碼觸發表</h3>
+        <div class="table-desc">當風險指標達到上限,系統建議加碼將指標拉回目標。<b style="color:#f59e0b;">回跌減碼點</b>顯示「若加碼後下跌,何時觸發減碼」</div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>觸發指數</th>
+              <th>動作</th>
+              <th>口數</th>
+              <th style="color:#10b981;">新均價</th>
+              <th>當下權益</th>
+              <th>真實損益</th>
+              <th>新 RI</th>
+              <th style="color:#f59e0b;">回跌減碼點</th>
+              <th style="color:#f59e0b;">減幾口</th>
+              <th style="color:#f59e0b;">回跌容忍</th>
+            </tr>
+          </thead>
+          <tbody id="addTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- ===== 視圖 3:減碼表 ===== -->
+  <!-- ============================================== -->
+  <div class="view" id="view-reduce">
+    <div class="actions">
+      <span style="color:#94a3b8;font-size:13px;align-self:center;">下跌策略:</span>
+      <button class="btn btn-secondary strategy-btn active" data-strategy="reduce" onclick="setStrategy('reduce')">A. 直接減碼</button>
+      <button class="btn btn-secondary strategy-btn" data-strategy="inject" onclick="setStrategy('inject')">B. 補保證金</button>
+      <button class="btn btn-secondary strategy-btn" data-strategy="hybrid" onclick="setStrategy('hybrid')">C. 混合策略</button>
+    </div>
+    <div class="table-card">
+      <div class="table-header">
+        <h3>📉 減碼觸發表</h3>
+        <div class="table-desc" id="reduceDesc">當風險指標跌破下限,系統建議減碼/補保證金</div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>觸發指數</th>
+              <th>動作</th>
+              <th>口數</th>
+              <th style="color:#10b981;">剩餘均價</th>
+              <th>當下權益</th>
+              <th>真實損益</th>
+              <th>實現損益</th>
+              <th>新 RI</th>
+            </tr>
+          </thead>
+          <tbody id="reduceTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- ===== 視圖 4:鎖利表 ===== -->
+  <!-- ============================================== -->
+  <div class="view" id="view-lock">
+    <div class="table-card">
+      <div class="table-header">
+        <h3>🔒 鎖利觸發表</h3>
+        <div class="table-desc">每加碼 N 次,自動將獲利的 X% 鎖定為「不可動用」,降低部位風險</div>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>觸發指數</th>
+              <th>累計加碼次數</th>
+              <th>當下權益</th>
+              <th>累計獲利</th>
+              <th>本次鎖定</th>
+              <th>累計鎖定</th>
+              <th>有效權益</th>
+              <th>口數</th>
+            </tr>
+          </thead>
+          <tbody id="lockTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- ===== 視圖 5:走勢圖 ===== -->
+  <!-- ============================================== -->
+  <div class="view" id="view-chart">
+    <div class="chart-container">
+      <div class="card-title" style="margin-bottom:16px;">📊 部位演進走勢</div>
+      <div class="chart-svg-wrap">
+        <svg id="chartSvg" width="100%" height="400" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:12px;line-height:1.8;">
+        <span style="color:#10b981;">●</span> 加碼點 &nbsp;
+        <span style="color:#f59e0b;">●</span> 減碼點 &nbsp;
+        <span style="color:#a855f7;">●</span> 鎖利點 &nbsp;
+        <span style="color:#fbbf24;">●</span> 起始點 &nbsp;
+        <span style="color:#ef4444;">●</span> 警戒區
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- ===== 視圖 6:策略庫 ===== -->
+  <!-- ============================================== -->
+  <div class="view" id="view-library">
+    <div class="actions">
+      <button class="btn btn-success" onclick="openSaveModal()">💾 儲存當前策略</button>
+      <button class="btn btn-secondary" onclick="exportAll()">📤 匯出全部</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('importInput').click()">📥 匯入檔案</button>
+      <input type="file" id="importInput" accept=".json" style="display:none" onchange="importAll(event)">
+    </div>
+    <div class="strategy-grid" id="strategyGrid"></div>
+  </div>
+
+</div>
+
+<!-- 儲存策略對話框 -->
+<div class="modal-backdrop" id="saveModal">
+  <div class="modal">
+    <h3>💾 儲存策略</h3>
+    <input type="text" id="strategyName" placeholder="例如:保守型滾倉" maxlength="40">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeSaveModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveStrategy()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 儲存提示 -->
+<div class="save-toast" id="saveToast">✓ 已自動儲存</div>
+
+<script>
+// ============================================================
+// ===== 商品規格資料庫 =====
+// ============================================================
+const PRODUCTS = {
+  TMF: { name: '微台', pointValue: 10, initMargin: 26300, maintMargin: 20150 },
+  MTX: { name: '小台', pointValue: 50, initMargin: 131500, maintMargin: 100750 },
+  TX:  { name: '大台', pointValue: 200, initMargin: 526000, maintMargin: 403000 },
+  M1F: { name: '中型100', pointValue: 50, initMargin: 23000, maintMargin: 18000 },
+  ZEF: { name: '小電子', pointValue: 50, initMargin: 91750, maintMargin: 70375 },
+  ZFF: { name: '小金融', pointValue: 250, initMargin: 33500, maintMargin: 25750 },
+  CUSTOM: { name: '自訂', pointValue: 10, initMargin: 26300, maintMargin: 20150 }
+};
+
+let currentProduct = 'TMF';
+let currentStrategy = 'reduce';
+const STORAGE_KEY = 'txfm_roll_v3';
+const STRATEGIES_KEY = 'txfm_roll_strategies_v3';
+
+// 計算結果暫存
+let calcResult = { addEvents: [], reduceEvents: [], lockEvents: [], summary: {} };
+
+// ============================================================
+// ===== 工具函數 =====
+// ============================================================
+function fmt(n) { 
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Math.round(n).toLocaleString('zh-TW'); 
+}
+function fmtSigned(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return (n >= 0 ? '+' : '') + fmt(n);
+}
+function pnlColor(n) {
+  if (!n) return '#94a3b8';
+  return n > 0 ? '#10b981' : '#ef4444';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('saveToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+// ============================================================
+// ===== 視圖切換 =====
+// ============================================================
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelector(`.tab[data-view="${name}"]`).classList.add('active');
+  
+  // 切到圖表視圖時重繪
+  if (name === 'chart') drawChart();
+  // 切到策略庫時重繪
+  if (name === 'library') renderStrategies();
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchView(t.dataset.view));
+});
+
+// ============================================================
+// ===== 商品 / 策略切換 =====
+// ============================================================
+function renderProductBar() {
+  const bar = document.getElementById('productBar');
+  bar.innerHTML = Object.entries(PRODUCTS).map(([k, p]) => `
+    <div class="product-pill ${k === currentProduct ? 'active' : ''}" onclick="selectProduct('${k}')">${p.name}</div>
+  `).join('');
+}
+
+function selectProduct(key) {
+  currentProduct = key;
+  const p = PRODUCTS[key];
+  if (key !== 'CUSTOM') {
+    document.getElementById('pointValue').value = p.pointValue;
+    document.getElementById('initMargin').value = p.initMargin;
+    document.getElementById('maintMargin').value = p.maintMargin;
+  }
+  renderProductBar();
+  saveCurrentState();
+  updateUI();
+}
+
+function setStrategy(s) {
+  currentStrategy = s;
+  document.querySelectorAll('.strategy-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.strategy === s);
+    b.classList.toggle('btn-primary', b.dataset.strategy === s);
+    b.classList.toggle('btn-secondary', b.dataset.strategy !== s);
+  });
+  const descs = {
+    reduce: '當風險指標跌破下限,直接減少口數讓 RI 回升',
+    inject: '當風險指標跌破下限,補入保證金維持口數不變',
+    hybrid: '前 2 次補保證金,之後改為減碼'
+  };
+  document.getElementById('reduceDesc').textContent = descs[s];
+  saveCurrentState();
+  calculate();
+}
+
+// ============================================================
+// ===== 主計算函數 =====
+// ============================================================
+function calculate() {
+  // 讀取參數
+  const avg = +document.getElementById('avgPrice').value;
+  const lots = +document.getElementById('initLots').value;
+  const cap = +document.getElementById('capital').value;
+  const target = +document.getElementById('targetRI').value / 100;
+  const upper = +document.getElementById('addTrigger').value / 100;
+  const lower = +document.getElementById('reduceTrigger').value / 100;
+  const im = +document.getElementById('initMargin').value;
+  const mm = +document.getElementById('maintMargin').value;
+  const pv = +document.getElementById('pointValue').value;
+  const lockEveryN = +document.getElementById('lockEveryN').value;
+  const lockPct = +document.getElementById('lockPct').value / 100;
+  const maxPrice = +document.getElementById('maxPrice').value;
+  
+  if (!lots || !cap || !im || !pv || !avg) return;
+  
+  const startRI = cap / (lots * im);
+  
+  // ===== 上漲方向(加碼) =====
+  const addEvents = [];
+  const lockEvents = [];
+  let curLots = lots, curAvg = avg, curPrice = avg, curRealized = 0;
+  let totalLocked = 0;
+  let addCount = 0;
+  let safety = 0;
+  
+  // 起始狀態若已超過上限
+  if (startRI > upper) {
+    let newLots = Math.floor(cap / (im * target));
+    const maxAllowed = Math.floor(cap / mm);
+    newLots = Math.min(newLots, maxAllowed);
+    const change = newLots - curLots;
+    if (change > 0) {
+      const newAvg = (curLots * curAvg + change * curPrice) / newLots;
+      // 計算「加碼後若回跌,何時觸發減碼」
+      const reduceTriggerP = newAvg + (lower * newLots * im - cap - curRealized + totalLocked) / (pv * newLots);
+      const tolerance = curPrice - reduceTriggerP;
+      
+      // 計算減碼口數
+      const floatingAtReduce = (reduceTriggerP - newAvg) * pv * newLots;
+      const equityAtReduce = cap + curRealized + floatingAtReduce - totalLocked;
+      const idealLotsAfterReduce = Math.floor(equityAtReduce / (im * target));
+      let lotsAfterReduce = Math.min(idealLotsAfterReduce, newLots - 1);
+      const maxAllowedAfterReduce = Math.floor(equityAtReduce / mm);
+      lotsAfterReduce = Math.min(lotsAfterReduce, maxAllowedAfterReduce);
+      if (lotsAfterReduce < 0) lotsAfterReduce = 0;
+      const reduceCount = newLots - lotsAfterReduce;
+      
+      addEvents.push({
+        price: curPrice, pts: 0, lots: newLots, lotsBefore: curLots,
+        avgPrice: newAvg, floating: 0, realized: 0,
+        equity: cap, riBefore: startRI * 100,
+        action: `⚡立即加 ${change} 口`, change: change,
+        riAfter: cap / (newLots * im) * 100, isStart: true,
+        reduceTriggerPrice: reduceTriggerP, tolerance: tolerance,
+        reduceCount: reduceCount, lotsAfterReduce: lotsAfterReduce
+      });
+      curLots = newLots; curAvg = newAvg; addCount++;
+    }
+  }
+  
+  while (safety++ < 100) {
+    // 解觸發點 newPrice:upper × curLots × im - totalLocked = cap + curRealized + (newPrice - curAvg) × pv × curLots
+    // 注意:totalLocked 從權益中扣除(視為已實現外流)
+    const numerator = upper * curLots * im - cap - curRealized + totalLocked;
+    const newPrice = curAvg + numerator / (pv * curLots);
+    if (newPrice <= curPrice + 0.01) break;
+    if (newPrice > maxPrice) break;
+    
+    const floatingBefore = (newPrice - curAvg) * pv * curLots;
+    const equity = cap + curRealized + floatingBefore - totalLocked;
+    
+    // 加碼
+    const idealLots = Math.floor(equity / (im * target));
+    let newLots = Math.max(idealLots, curLots + 1);
+    const maxAllowed = Math.floor(equity / mm);
+    if (newLots > maxAllowed) newLots = maxAllowed;
+    
+    const change = newLots - curLots;
+    if (change <= 0) break;
+    
+    const newAvg = (curLots * curAvg + change * newPrice) / newLots;
+    const floatingAfter = (newPrice - newAvg) * pv * newLots;
+    
+    // 計算「加碼後若回跌,何時觸發減碼」
+    const reduceTriggerP = newAvg + (lower * newLots * im - cap - curRealized + totalLocked) / (pv * newLots);
+    const tolerance = newPrice - reduceTriggerP;
+    
+    // 計算「若觸發減碼,要減幾口」
+    const floatingAtReduce = (reduceTriggerP - newAvg) * pv * newLots;
+    const equityAtReduce = cap + curRealized + floatingAtReduce - totalLocked;
+    const idealLotsAfterReduce = Math.floor(equityAtReduce / (im * target));
+    let lotsAfterReduce = Math.min(idealLotsAfterReduce, newLots - 1);
+    const maxAllowedAfterReduce = Math.floor(equityAtReduce / mm);
+    lotsAfterReduce = Math.min(lotsAfterReduce, maxAllowedAfterReduce);
+    if (lotsAfterReduce < 0) lotsAfterReduce = 0;
+    const reduceCount = newLots - lotsAfterReduce;
+    
+    addCount++;
+    addEvents.push({
+      price: newPrice, pts: newPrice - avg, lots: newLots, lotsBefore: curLots,
+      avgPrice: newAvg, floating: floatingAfter, realized: curRealized,
+      equity: equity, riBefore: upper * 100,
+      action: `加 ${change} 口`, change: change,
+      riAfter: equity / (newLots * im) * 100,
+      addCount: addCount,
+      reduceTriggerPrice: reduceTriggerP, tolerance: tolerance,
+      reduceCount: reduceCount, lotsAfterReduce: lotsAfterReduce
+    });
+    
+    // 鎖利檢查
+    if (lockEveryN > 0 && addCount % lockEveryN === 0 && lockPct > 0) {
+      const profit = curRealized + floatingAfter; // 累計獲利
+      if (profit > 0) {
+        const lockAmount = profit * lockPct;
+        totalLocked += lockAmount;
+        lockEvents.push({
+          price: newPrice, pts: newPrice - avg,
+          addCount: addCount,
+          equity: equity,
+          totalProfit: profit,
+          lockThis: lockAmount,
+          lockTotal: totalLocked,
+          effEquity: equity - lockAmount, // 鎖完後的有效權益
+          lots: newLots
+        });
+      }
+    }
+    
+    curLots = newLots; curAvg = newAvg;
+    curPrice = newPrice;
+  }
+  
+  // ===== 下跌方向(減碼/補保證金) =====
+  const reduceEvents = [];
+  curLots = lots; curAvg = avg; curPrice = avg; curRealized = 0;
+  let totalInject = 0;
+  let injectCount = 0;
+  const hybridLimit = 2;
+  safety = 0;
+  
+  // 起始實際 RI 已跌破下限
+  if (startRI < lower) {
+    const idealLots = Math.floor(cap / (im * target));
+    let newLots = Math.min(idealLots, curLots - 1);
+    const maxAllowed = Math.floor(cap / mm);
+    newLots = Math.min(newLots, maxAllowed);
+    if (newLots > 0) {
+      const change = curLots - newLots;
+      reduceEvents.push({
+        price: curPrice, pts: 0, lots: newLots, lotsBefore: curLots,
+        avgPrice: curAvg, floating: 0, realized: 0,
+        equity: cap, riBefore: startRI * 100,
+        action: `⚡立即減 ${change} 口`, change: -change,
+        riAfter: cap / (newLots * im) * 100, isStart: true, kind: 'reduce'
+      });
+      curLots = newLots;
+    }
+  }
+  
+  while (safety++ < 50) {
+    const numerator = lower * curLots * im - cap - curRealized;
+    const newPrice = curAvg + numerator / (pv * curLots);
+    if (newPrice >= curPrice - 0.01) break;
+    if (newPrice < avg * 0.4) break;
+    
+    const floatingBefore = (newPrice - curAvg) * pv * curLots;
+    const equity = cap + curRealized + floatingBefore;
+    if (equity <= 0) break;
+    
+    let useInject = false;
+    if (currentStrategy === 'inject') useInject = true;
+    else if (currentStrategy === 'hybrid' && injectCount < hybridLimit) useInject = true;
+    
+    if (useInject) {
+      const targetEquity = target * curLots * im;
+      const inject = targetEquity - equity;
+      totalInject += inject;
+      injectCount++;
+      
+      reduceEvents.push({
+        price: newPrice, pts: newPrice - avg, lots: curLots, lotsBefore: curLots,
+        avgPrice: curAvg, floating: floatingBefore, realized: curRealized,
+        equity: equity, equityAfter: targetEquity,
+        riBefore: lower * 100,
+        action: `補 ${fmt(inject)} 元`, change: 0, injectAmount: inject,
+        riAfter: target * 100, kind: 'inject'
+      });
+      
+      curRealized += inject;
+      curPrice = newPrice;
+    } else {
+      const idealLots = Math.floor(equity / (im * target));
+      let newLots = Math.min(idealLots, curLots - 1);
+      const maxAllowed = Math.floor(equity / mm);
+      newLots = Math.min(newLots, maxAllowed);
+      
+      if (newLots <= 0) {
+        const realizePerLot = (newPrice - curAvg) * pv;
+        const newRealized = curRealized + realizePerLot * curLots;
+        reduceEvents.push({
+          price: newPrice, pts: newPrice - avg, lots: 0, lotsBefore: curLots,
+          avgPrice: curAvg, floating: 0, realized: newRealized,
+          equity: cap + newRealized,
+          riBefore: lower * 100,
+          action: '🚨 清倉', change: -curLots,
+          riAfter: 0, kind: 'cut'
+        });
+        break;
+      }
+      
+      const reduceLots = curLots - newLots;
+      const realizePerLot = (newPrice - curAvg) * pv;
+      const newRealized = curRealized + realizePerLot * reduceLots;
+      const floatingAfter = (newPrice - curAvg) * pv * newLots;
+      const equityAfter = cap + newRealized + floatingAfter;
+      
+      reduceEvents.push({
+        price: newPrice, pts: newPrice - avg, lots: newLots, lotsBefore: curLots,
+        avgPrice: curAvg, floating: floatingAfter, realized: newRealized,
+        equity: equityAfter,
+        riBefore: lower * 100,
+        action: `減 ${reduceLots} 口`, change: -reduceLots,
+        riAfter: equityAfter / (newLots * im) * 100, kind: 'reduce'
+      });
+      
+      curLots = newLots; curRealized = newRealized; curPrice = newPrice;
+    }
+  }
+  
+  // 補上追繳/砍倉警戒(僅減碼策略)
+  if (reduceEvents.length > 0 && currentStrategy !== 'inject') {
+    const last = reduceEvents[reduceEvents.length - 1];
+    if (last.lots > 0 && last.kind === 'reduce') {
+      const callP = last.price - (last.equity - last.lots * im) / (last.lots * pv);
+      const cutP = last.price - (last.equity - last.lots * im * 0.25) / (last.lots * pv);
+      if (callP > 0 && cutP > 0) {
+        reduceEvents.push({
+          price: callP, pts: callP - avg, lots: last.lots, lotsBefore: last.lots,
+          avgPrice: last.avgPrice, floating: (callP - last.avgPrice) * pv * last.lots,
+          realized: last.realized, equity: last.lots * im,
+          riBefore: 100, action: '⚠️ 追繳', change: 0, riAfter: 100, kind: 'warn'
+        });
+        reduceEvents.push({
+          price: cutP, pts: cutP - avg, lots: 0, lotsBefore: last.lots,
+          avgPrice: last.avgPrice, floating: 0,
+          realized: last.realized + (cutP - last.avgPrice) * pv * last.lots,
+          equity: 0, riBefore: 25, action: '🚨 砍倉', change: -last.lots, riAfter: 0, kind: 'cut'
+        });
+      }
+    }
+  }
+  
+  // ===== 摘要 =====
+  const finalLots = addEvents.length > 0 ? addEvents[addEvents.length - 1].lots : lots;
+  const summary = {
+    currentRI: startRI * 100,
+    initLots: lots,
+    initPrice: avg,
+    capital: cap,
+    finalLots: finalLots,
+    addCount: addCount,
+    totalLocked: totalLocked,
+    totalInject: totalInject
+  };
+  
+  calcResult = { addEvents, reduceEvents, lockEvents, summary };
+  
+  renderTables();
+  updateUI();
+  saveCurrentState();
+}
+
+// ============================================================
+// ===== 表格渲染 =====
+// ============================================================
+function renderTables() {
+  // 加碼表
+  const addBody = document.getElementById('addTableBody');
+  if (calcResult.addEvents.length === 0) {
+    addBody.innerHTML = '<tr><td colspan="10" class="empty-state">無加碼事件(指數可能未達上限)</td></tr>';
+  } else {
+    addBody.innerHTML = calcResult.addEvents.map(ev => renderAddRow(ev, 'add-zone')).join('');
+  }
+  
+  // 減碼表
+  const reduceBody = document.getElementById('reduceTableBody');
+  if (calcResult.reduceEvents.length === 0) {
+    reduceBody.innerHTML = '<tr><td colspan="8" class="empty-state">無減碼事件</td></tr>';
+  } else {
+    reduceBody.innerHTML = calcResult.reduceEvents.map(ev => {
+      let cls = 'reduce-zone';
+      if (ev.kind === 'inject') cls = 'lock-zone';
+      else if (ev.kind === 'cut' || ev.kind === 'warn') cls = 'danger-zone';
+      return renderReduceRow(ev, cls);
+    }).join('');
+    
+    // 補保證金累計
+    if (calcResult.summary.totalInject > 0) {
+      reduceBody.innerHTML += `
+        <tr style="background:#0e7490;border-top:2px solid #06b6d4;">
+          <td colspan="8" style="text-align:center;padding:10px;color:#cffafe;font-weight:600;">
+            💧 累計需補保證金:<span style="color:#fbbf24;">${fmt(calcResult.summary.totalInject)}</span> 元
+          </td>
+        </tr>
+      `;
+    }
+  }
+  
+  // 鎖利表
+  const lockBody = document.getElementById('lockTableBody');
+  if (calcResult.lockEvents.length === 0) {
+    lockBody.innerHTML = '<tr><td colspan="8" class="empty-state">無鎖利事件(尚未達加碼次數門檻或無獲利)</td></tr>';
+  } else {
+    lockBody.innerHTML = calcResult.lockEvents.map(ev => `
+      <tr class="lock-zone">
+        <td>${ev.price.toFixed(0)}</td>
+        <td>${ev.addCount} 次</td>
+        <td>${fmt(ev.equity)}</td>
+        <td style="color:${pnlColor(ev.totalProfit)}">${fmtSigned(ev.totalProfit)}</td>
+        <td class="action-lock">🔒 ${fmt(ev.lockThis)}</td>
+        <td>${fmt(ev.lockTotal)}</td>
+        <td>${fmt(ev.effEquity)}</td>
+        <td><b>${ev.lots}</b></td>
+      </tr>
+    `).join('');
+  }
+}
+
+// ===== 加碼表渲染(10 欄) =====
+function renderAddRow(ev, rowCls) {
+  const totalPnL = (ev.floating || 0) + (ev.realized || 0);
+  const pnlColorVal = pnlColor(totalPnL);
+  const tooltip = ev.avgPrice ? `均價 ${ev.avgPrice.toFixed(1)} | 浮 ${fmtSigned(ev.floating || 0)} | 實 ${fmtSigned(ev.realized || 0)}` : '';
+  
+  // 回跌觸發欄
+  let reducePriceCell = '—', reduceCountCell = '—', toleranceCell = '—';
+  if (ev.reduceTriggerPrice !== undefined && ev.tolerance !== undefined) {
+    let toleranceColor = '#10b981';
+    if (ev.tolerance < 300) toleranceColor = '#ef4444';
+    else if (ev.tolerance < 500) toleranceColor = '#f59e0b';
+    else if (ev.tolerance < 800) toleranceColor = '#fbbf24';
+    
+    const pv = +document.getElementById('pointValue').value;
+    const toleranceMoney = ev.tolerance * ev.lots * pv;
+    const toleranceTooltip = `若回跌 ${ev.tolerance.toFixed(0)} 點到 ${ev.reduceTriggerPrice.toFixed(0)},須減 ${ev.reduceCount} 口,損失約 ${fmt(toleranceMoney)} 元`;
+    
+    reducePriceCell = `<span style="color:#f59e0b;">${ev.reduceTriggerPrice.toFixed(0)}</span>`;
+    reduceCountCell = `<span style="color:#f59e0b;font-weight:700;">減 ${ev.reduceCount} 口</span><br><span style="font-size:10px;color:#94a3b8;font-weight:400;">→ 剩 ${ev.lotsAfterReduce} 口</span>`;
+    toleranceCell = `<span style="color:${toleranceColor};font-weight:700;cursor:help;" title="${toleranceTooltip}">-${ev.tolerance.toFixed(0)} 點<br><span style="font-size:10px;font-weight:400;color:#94a3b8;">≈${fmt(toleranceMoney/10000)}萬</span></span>`;
+  }
+  
+  return `
+    <tr class="${rowCls}">
+      <td>${ev.price.toFixed(0)}${ev.isStart ? ' ⭐' : ''}</td>
+      <td class="action-add">${ev.action}</td>
+      <td><b>${ev.lots}</b><br><span style="font-size:10px;color:#94a3b8;font-weight:400;">(${ev.lotsBefore}→${ev.lots})</span></td>
+      <td style="color:#10b981;">${ev.avgPrice ? ev.avgPrice.toFixed(1) : '—'}</td>
+      <td>${fmt(ev.equity)}</td>
+      <td><span style="color:${pnlColorVal};font-weight:700;cursor:help;" title="${tooltip}">${fmtSigned(totalPnL)}</span></td>
+      <td>${ev.riAfter > 0 ? ev.riAfter.toFixed(0) + '%' : '-'}</td>
+      <td>${reducePriceCell}</td>
+      <td>${reduceCountCell}</td>
+      <td>${toleranceCell}</td>
+    </tr>
+  `;
+}
+
+// ===== 減碼表渲染(8 欄) =====
+function renderReduceRow(ev, rowCls) {
+  const totalPnL = (ev.floating || 0) + (ev.realized || 0);
+  const pnlColorVal = pnlColor(totalPnL);
+  const realizedColor = pnlColor(ev.realized || 0);
+  
+  let actionCls = 'action-reduce';
+  if (ev.kind === 'cut' || ev.action.includes('清倉') || ev.action.includes('砍倉')) actionCls = 'action-cut';
+  else if (ev.kind === 'warn' || ev.action.includes('追繳')) actionCls = 'action-cut';
+  else if (ev.kind === 'inject') actionCls = 'action-inject';
+  
+  // 動作欄:強調口數
+  let actionDisplay = ev.action;
+  if (ev.kind === 'reduce' && ev.change < 0) {
+    actionDisplay = `<span class="${actionCls}">減 ${-ev.change} 口</span><br><span style="font-size:10px;color:#94a3b8;font-weight:400;">(${ev.lotsBefore}→${ev.lots})</span>`;
+  } else if (ev.kind === 'inject') {
+    actionDisplay = `<span class="${actionCls}">補 ${fmt(ev.injectAmount)} 元</span><br><span style="font-size:10px;color:#94a3b8;font-weight:400;">口數不變</span>`;
+  } else {
+    actionDisplay = `<span class="${actionCls}">${ev.action}</span>`;
+  }
+  
+  let equityDisp;
+  if (ev.kind === 'inject') {
+    equityDisp = `${fmt(ev.equity)} → <b style="color:#06b6d4">${fmt(ev.equityAfter)}</b>`;
+  } else {
+    equityDisp = fmt(ev.equity);
+  }
+  
+  // 剩餘均價:減碼後均價不變(剩下口數的成本沒變);補保證金均價也不變;清倉時顯示原本均價
+  let avgDisp = '—';
+  if (ev.lots > 0 && ev.avgPrice) {
+    avgDisp = `<span style="color:#10b981;">${ev.avgPrice.toFixed(1)}</span>`;
+  }
+  
+  const tooltip = ev.avgPrice ? `均價 ${ev.avgPrice.toFixed(1)} | 浮 ${fmtSigned(ev.floating || 0)}` : '';
+  
+  return `
+    <tr class="${rowCls}">
+      <td>${ev.price.toFixed(0)}${ev.isStart ? ' ⭐' : ''}</td>
+      <td>${actionDisplay}</td>
+      <td><b>${ev.lots}</b></td>
+      <td>${avgDisp}</td>
+      <td>${equityDisp}</td>
+      <td><span style="color:${pnlColorVal};font-weight:700;cursor:help;" title="${tooltip}">${fmtSigned(totalPnL)}</span></td>
+      <td style="color:${realizedColor};">${fmtSigned(ev.realized || 0)}</td>
+      <td>${ev.riAfter > 0 ? ev.riAfter.toFixed(0) + '%' : '-'}</td>
+    </tr>
+  `;
+}
+
+// 舊版相容(以防其他地方還在呼叫)
+function renderRow(ev, rowCls, isAddTable) {
+  return isAddTable ? renderAddRow(ev, rowCls) : renderReduceRow(ev, rowCls);
+}
+
+// ============================================================
+// ===== UI 更新 =====
+// ============================================================
+function updateUI() {
+  const cap = +document.getElementById('capital').value;
+  const lots = +document.getElementById('initLots').value;
+  const im = +document.getElementById('initMargin').value;
+  const mm = +document.getElementById('maintMargin').value;
+  const avg = +document.getElementById('avgPrice').value;
+  const pv = +document.getElementById('pointValue').value;
+  
+  if (!lots || !cap || !im) return;
+  
+  const ri = cap / (lots * im);
+  const maintRatio = cap / (lots * mm);
+  
+  // RI 進度條
+  document.getElementById('currentRIDisplay').textContent = (ri * 100).toFixed(1) + '%';
+  // 把 0%~250% 映射到 0%~100% 進度條
+  const pct = Math.min(100, Math.max(0, ri * 100 / 2.5));
+  document.getElementById('riProgressFill').style.width = pct + '%';
+  document.getElementById('riProgressMarker').style.left = pct + '%';
+  
+  // 摘要
+  const callPrice = avg - (cap - lots * im) / (lots * pv);
+  const summary = calcResult.summary || {};
+  
+  document.getElementById('summaryBar').innerHTML = `
+    <div class="summary-item ${ri > 1.3 ? 'success' : (ri < 1.1 ? 'danger' : '')}">
+      <div class="summary-label">目前風險指標</div>
+      <div class="summary-value">${(ri*100).toFixed(1)}%</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">起始口數</div>
+      <div class="summary-value">${lots}口</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">起始均價</div>
+      <div class="summary-value">${fmt(avg)}點</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">帳戶權益</div>
+      <div class="summary-value">NT$${fmt(cap)}</div>
+    </div>
+    <div class="summary-item ${maintRatio < 1.3 ? 'warning' : 'success'}">
+      <div class="summary-label">維持率</div>
+      <div class="summary-value">${(maintRatio*100).toFixed(0)}%</div>
+    </div>
+    <div class="summary-item success">
+      <div class="summary-label">最終加碼口數</div>
+      <div class="summary-value">${summary.finalLots || lots}口</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">加碼次數合計</div>
+      <div class="summary-value">${summary.addCount || 0}次</div>
+    </div>
+    <div class="summary-item warning">
+      <div class="summary-label">追繳價</div>
+      <div class="summary-value">${callPrice.toFixed(0)}</div>
+    </div>
+  `;
+}
+
+// ============================================================
+// ===== 走勢圖 =====
+// ============================================================
+function drawChart() {
+  const svg = document.getElementById('chartSvg');
+  const w = 800, h = 400;
+  const margin = { top: 30, right: 60, bottom: 50, left: 70 };
+  const innerW = w - margin.left - margin.right;
+  const innerH = h - margin.top - margin.bottom;
+  
+  // 收集所有事件點
+  const allEvents = [];
+  const avg = +document.getElementById('avgPrice').value;
+  const lots = +document.getElementById('initLots').value;
+  
+  // 起始點
+  allEvents.push({ price: avg, lots: lots, kind: 'start', label: '起始' });
+  
+  calcResult.addEvents.forEach(ev => {
+    allEvents.push({ price: ev.price, lots: ev.lots, kind: 'add', label: ev.action });
+  });
+  calcResult.reduceEvents.forEach(ev => {
+    let kind = 'reduce';
+    if (ev.kind === 'cut' || ev.kind === 'warn') kind = 'danger';
+    if (ev.kind === 'inject') kind = 'inject';
+    allEvents.push({ price: ev.price, lots: ev.lots, kind: kind, label: ev.action });
+  });
+  calcResult.lockEvents.forEach(ev => {
+    allEvents.push({ price: ev.price, lots: ev.lots, kind: 'lock', label: '🔒鎖利' });
+  });
+  
+  if (allEvents.length === 0) {
+    svg.innerHTML = '<text x="400" y="200" text-anchor="middle" fill="#64748b">無事件資料,請先計算</text>';
+    return;
+  }
+  
+  // 計算範圍
+  const prices = allEvents.map(e => e.price);
+  const lotsArr = allEvents.map(e => e.lots);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const maxLots = Math.max(...lotsArr) || 1;
+  
+  // 排序事件按價格升冪(指數)
+  allEvents.sort((a, b) => a.price - b.price);
+  
+  // 縮放函數
+  const xScale = p => margin.left + (p - minPrice) / (maxPrice - minPrice + 0.01) * innerW;
+  const yScale = l => margin.top + innerH - (l / maxLots) * innerH;
+  
+  // 顏色映射
+  const colorMap = {
+    start: '#fbbf24',
+    add: '#10b981',
+    reduce: '#f59e0b',
+    danger: '#ef4444',
+    inject: '#06b6d4',
+    lock: '#a855f7'
+  };
+  
+  // 開始繪圖
+  let html = '';
+  
+  // 背景網格
+  for (let i = 0; i <= 5; i++) {
+    const y = margin.top + (innerH * i / 5);
+    html += `<line x1="${margin.left}" y1="${y}" x2="${margin.left + innerW}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+  }
+  for (let i = 0; i <= 5; i++) {
+    const x = margin.left + (innerW * i / 5);
+    html += `<line x1="${x}" y1="${margin.top}" x2="${x}" y2="${margin.top + innerH}" stroke="#1e293b" stroke-width="1"/>`;
+  }
+  
+  // Y 軸標籤(口數)
+  for (let i = 0; i <= 5; i++) {
+    const y = margin.top + innerH - (innerH * i / 5);
+    const v = Math.round(maxLots * i / 5);
+    html += `<text x="${margin.left - 10}" y="${y + 4}" text-anchor="end" fill="#94a3b8" font-size="11">${v}口</text>`;
+  }
+  
+  // X 軸標籤(指數)
+  for (let i = 0; i <= 5; i++) {
+    const x = margin.left + (innerW * i / 5);
+    const v = Math.round(minPrice + (maxPrice - minPrice) * i / 5);
+    html += `<text x="${x}" y="${margin.top + innerH + 18}" text-anchor="middle" fill="#94a3b8" font-size="11">${v}</text>`;
+  }
+  
+  // 起始點垂直參考線
+  const startX = xScale(avg);
+  html += `<line x1="${startX}" y1="${margin.top}" x2="${startX}" y2="${margin.top + innerH}" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>`;
+  
+  // 連線:依序連接所有事件
+  if (allEvents.length > 1) {
+    const path = allEvents.map((e, i) => {
+      const x = xScale(e.price);
+      const y = yScale(e.lots);
+      return (i === 0 ? 'M' : 'L') + x + ' ' + y;
+    }).join(' ');
+    html += `<path d="${path}" stroke="#475569" stroke-width="1.5" fill="none" opacity="0.6"/>`;
+  }
+  
+  // 點
+  allEvents.forEach(e => {
+    const x = xScale(e.price);
+    const y = yScale(e.lots);
+    const color = colorMap[e.kind] || '#94a3b8';
+    const r = e.kind === 'start' ? 6 : 4;
+    html += `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}" stroke="#0a0e1a" stroke-width="2">
+      <title>${e.label} | 指數 ${e.price.toFixed(0)} | 口數 ${e.lots}</title>
+    </circle>`;
+  });
+  
+  // 軸線
+  html += `<line x1="${margin.left}" y1="${margin.top + innerH}" x2="${margin.left + innerW}" y2="${margin.top + innerH}" stroke="#475569"/>`;
+  html += `<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + innerH}" stroke="#475569"/>`;
+  
+  // 軸標題
+  html += `<text x="${w/2}" y="${h - 10}" text-anchor="middle" fill="#94a3b8" font-size="12">指數</text>`;
+  html += `<text x="20" y="${h/2}" text-anchor="middle" fill="#94a3b8" font-size="12" transform="rotate(-90 20 ${h/2})">口數</text>`;
+  
+  svg.innerHTML = html;
+}
+
+// ============================================================
+// ===== 儲存與載入 =====
+// ============================================================
+function saveCurrentState() {
+  try {
+    const state = {
+      product: currentProduct,
+      strategy: currentStrategy,
+      avgPrice: document.getElementById('avgPrice').value,
+      initLots: document.getElementById('initLots').value,
+      capital: document.getElementById('capital').value,
+      targetRI: document.getElementById('targetRI').value,
+      addTrigger: document.getElementById('addTrigger').value,
+      reduceTrigger: document.getElementById('reduceTrigger').value,
+      lockEveryN: document.getElementById('lockEveryN').value,
+      lockPct: document.getElementById('lockPct').value,
+      maxPrice: document.getElementById('maxPrice').value,
+      pointValue: document.getElementById('pointValue').value,
+      initMargin: document.getElementById('initMargin').value,
+      maintMargin: document.getElementById('maintMargin').value
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return;
+    const s = JSON.parse(data);
+    currentProduct = s.product || 'TMF';
+    currentStrategy = s.strategy || 'reduce';
+    if (s.avgPrice) document.getElementById('avgPrice').value = s.avgPrice;
+    if (s.initLots) document.getElementById('initLots').value = s.initLots;
+    if (s.capital) document.getElementById('capital').value = s.capital;
+    if (s.targetRI) document.getElementById('targetRI').value = s.targetRI;
+    if (s.addTrigger) document.getElementById('addTrigger').value = s.addTrigger;
+    if (s.reduceTrigger) document.getElementById('reduceTrigger').value = s.reduceTrigger;
+    if (s.lockEveryN) document.getElementById('lockEveryN').value = s.lockEveryN;
+    if (s.lockPct) document.getElementById('lockPct').value = s.lockPct;
+    if (s.maxPrice) document.getElementById('maxPrice').value = s.maxPrice;
+    if (s.pointValue) document.getElementById('pointValue').value = s.pointValue;
+    if (s.initMargin) document.getElementById('initMargin').value = s.initMargin;
+    if (s.maintMargin) document.getElementById('maintMargin').value = s.maintMargin;
+  } catch(e) {}
+}
+
+// ============================================================
+// ===== 策略庫 =====
+// ============================================================
+function getStrategies() {
+  try { return JSON.parse(localStorage.getItem(STRATEGIES_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+
+function setStrategies(obj) {
+  localStorage.setItem(STRATEGIES_KEY, JSON.stringify(obj));
+  refreshStrategySelect();
+}
+
+function openSaveModal() {
+  document.getElementById('strategyName').value = '';
+  document.getElementById('saveModal').classList.add('show');
+  setTimeout(() => document.getElementById('strategyName').focus(), 100);
+}
+function closeSaveModal() {
+  document.getElementById('saveModal').classList.remove('show');
+}
+
+function saveStrategy() {
+  const name = document.getElementById('strategyName').value.trim();
+  if (!name) { alert('請輸入策略名稱'); return; }
+  
+  const all = getStrategies();
+  all[name] = {
+    product: currentProduct,
+    strategy: currentStrategy,
+    avgPrice: +document.getElementById('avgPrice').value,
+    initLots: +document.getElementById('initLots').value,
+    capital: +document.getElementById('capital').value,
+    targetRI: +document.getElementById('targetRI').value,
+    addTrigger: +document.getElementById('addTrigger').value,
+    reduceTrigger: +document.getElementById('reduceTrigger').value,
+    lockEveryN: +document.getElementById('lockEveryN').value,
+    lockPct: +document.getElementById('lockPct').value,
+    maxPrice: +document.getElementById('maxPrice').value,
+    pointValue: +document.getElementById('pointValue').value,
+    initMargin: +document.getElementById('initMargin').value,
+    maintMargin: +document.getElementById('maintMargin').value,
+    savedAt: new Date().toISOString()
+  };
+  setStrategies(all);
+  closeSaveModal();
+  showToast('✓ 策略「' + name + '」已儲存');
+  renderStrategies();
+}
+
+function loadStrategy(name) {
+  const all = getStrategies();
+  const s = all[name];
+  if (!s) return;
+  currentProduct = s.product || 'TMF';
+  currentStrategy = s.strategy || 'reduce';
+  document.getElementById('avgPrice').value = s.avgPrice;
+  document.getElementById('initLots').value = s.initLots;
+  document.getElementById('capital').value = s.capital;
+  document.getElementById('targetRI').value = s.targetRI;
+  document.getElementById('addTrigger').value = s.addTrigger;
+  document.getElementById('reduceTrigger').value = s.reduceTrigger;
+  document.getElementById('lockEveryN').value = s.lockEveryN;
+  document.getElementById('lockPct').value = s.lockPct;
+  document.getElementById('maxPrice').value = s.maxPrice;
+  document.getElementById('pointValue').value = s.pointValue;
+  document.getElementById('initMargin').value = s.initMargin;
+  document.getElementById('maintMargin').value = s.maintMargin;
+  renderProductBar();
+  setStrategy(currentStrategy);
+  showToast('✓ 已載入「' + name + '」');
+  switchView('params');
+}
+
+function deleteStrategy(name) {
+  if (!confirm('確定刪除「' + name + '」?')) return;
+  const all = getStrategies();
+  delete all[name];
+  setStrategies(all);
+  renderStrategies();
+}
+
+function loadFromSelect(name) {
+  if (name) loadStrategy(name);
+}
+
+function refreshStrategySelect() {
+  const select = document.getElementById('strategySelect');
+  const all = getStrategies();
+  const names = Object.keys(all);
+  select.innerHTML = '<option value="">— 選擇策略 —</option>' + 
+    names.map(n => `<option value="${n}">${n}</option>`).join('');
+}
+
+function renderStrategies() {
+  const grid = document.getElementById('strategyGrid');
+  const all = getStrategies();
+  const entries = Object.entries(all);
+  
+  let html = '';
+  entries.forEach(([name, s]) => {
+    const productName = (PRODUCTS[s.product] || PRODUCTS.TMF).name;
+    html += `
+      <div class="strategy-card">
+        <div class="strategy-name">${name}</div>
+        <div class="strategy-meta">
+          ${productName} · ${s.initLots}口 · 均價 ${fmt(s.avgPrice)}<br>
+          目標 RI ${s.targetRI}% / 加 ${s.addTrigger}% / 減 ${s.reduceTrigger}%<br>
+          鎖利每 ${s.lockEveryN} 次 ${s.lockPct}%
+        </div>
+        <div class="strategy-actions">
+          <button onclick="loadStrategy('${name.replace(/'/g, "\\'")}')">載入</button>
+          <button class="danger" onclick="deleteStrategy('${name.replace(/'/g, "\\'")}')">刪除</button>
+        </div>
+      </div>
+    `;
+  });
+  
+  if (entries.length === 0) {
+    html = `<div class="strategy-card empty" onclick="openSaveModal()">
+      ＋ 尚無已儲存策略<br>
+      <span style="font-size:11px;">點擊建立第一個策略</span>
+    </div>`;
+  }
+  
+  grid.innerHTML = html;
+}
+
+function exportAll() {
+  const all = getStrategies();
+  const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `txfm_roll_strategies_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importAll(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const existing = getStrategies();
+      const merged = { ...existing, ...data };
+      setStrategies(merged);
+      renderStrategies();
+      showToast('✓ 已匯入策略');
+    } catch(err) { alert('檔案格式錯誤'); }
+  };
+  reader.readAsText(file);
+}
+
+// ============================================================
+// ===== 啟動 =====
+// ============================================================
+loadState();
+renderProductBar();
+refreshStrategySelect();
+
+// 綁定所有 input
+['avgPrice','initLots','capital','targetRI','addTrigger','reduceTrigger',
+ 'lockEveryN','lockPct','maxPrice','pointValue','initMargin','maintMargin'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    saveCurrentState();
+    updateUI();
+  });
+});
+
+// 初始計算
+calculate();
+
+// Service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
