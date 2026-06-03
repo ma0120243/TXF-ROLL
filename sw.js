@@ -1,5 +1,5 @@
 // Service Worker - 讓 PWA 可離線使用
-const CACHE_NAME = 'txfm-roll-v3-2';
+const CACHE_NAME = 'txfm-roll-v3-4';
 const ASSETS = [
   './',
   './index.html',
