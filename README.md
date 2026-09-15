@@ -20,38 +20,7 @@
 
 ---
 
-## 🚀 部署到 GitHub Pages(3 步驟)
 
-### 步驟 1:建立 Repository
-1. 登入 GitHub,點右上角 **＋ → New repository**
-2. Repository name 填寫(例如 `txfm-roll`)
-3. 設為 **Public**(GitHub Pages 免費版需公開)
-4. 點 **Create repository**
-
-### 步驟 2:上傳檔案
-1. 在新建的 repo 頁面,點 **uploading an existing file**
-2. 把這個資料夾裡的**所有檔案**拖進去:
-   - `index.html`
-   - `manifest.json`
-   - `sw.js`
-   - `icon-192.png`
-   - `icon-512.png`
-   - `.nojekyll`
-3. 點 **Commit changes**
-
-### 步驟 3:開啟 GitHub Pages
-1. 進入 repo 的 **Settings** → 左側 **Pages**
-2. Source 選 **Deploy from a branch**
-3. Branch 選 **main**(或 master)、資料夾選 **/ (root)**
-4. 點 **Save**
-5. 等 1~2 分鐘,頁面會顯示你的網址:
-   ```
-   https://你的帳號.github.io/txfm-roll/
-   ```
-
-完成!打開那個網址就能使用,手機也可以。
-
----
 
 ## 📱 加入手機主畫面(當 App 用)
 
@@ -71,14 +40,6 @@
 
 直接雙擊 `index.html` 即可用瀏覽器開啟。
 (注意:本機開啟時 PWA 離線功能與「加入主畫面」可能受限,建議部署到 GitHub Pages 或用支援的本機伺服器)
-
----
-
-## 🔄 更新版本
-
-修改 `index.html` 後重新上傳,並把 `sw.js` 裡的 `CACHE_NAME` 改一個新版本號(例如 `txfm-roll-v3-3`),否則瀏覽器可能用舊快取。
-
-使用者端若沒看到更新,可在 App 內點「🔥 強制重整」或瀏覽器按 `Ctrl+Shift+R`。
 
 ---
 
